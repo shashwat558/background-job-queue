@@ -15,7 +15,7 @@ REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 
 conf = ConnectionConfig(
     MAIL_USERNAME="jainshashwat528@gmail.com",
-    MAIL_PASSWORD="aaft",
+    MAIL_PASSWORD="aaft gdwt rmsx rvbv",
     MAIL_FROM = "jainshashwat528@gmail.com",
     MAIL_PORT = 587,
     MAIL_SERVER = "smtp.gmail.com",
