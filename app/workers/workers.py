@@ -7,6 +7,7 @@ from app.services.job_services import JobService
 import time
 import uuid
 import socket
+from datetime import datetime
 
 def get_worker_id() -> str:
     """Generate a unique worker ID based on hostname and UUID"""
@@ -33,6 +34,9 @@ def run_worker():
            job = repo.get_job(session, ready_job_id)
            job.worker_id = worker_id
            job.status = "running"
+           job.lease_expires_at = datetime.now()
+           job.last_heartbeat_at = datetime.now()
+           
            repo.update_job(session, job)
            response = dispatcher.execute_job(job)
            if response != True and job.retries < job.max_retries:
