@@ -17,6 +17,7 @@ async def create_job(data:JobCreateRequest, current_user:str = Depends(get_curre
         type=data.type,
         priority=data.priority,
         scheduled_at=data.scheduled_at,
+        available_at= data.scheduled_at,
         user_id= current_user,
         payload=data.payload.model_dump()
     )

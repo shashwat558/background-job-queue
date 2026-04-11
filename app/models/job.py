@@ -11,6 +11,7 @@ class JobStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    RETRY_SCHEDULED = "retry_scheduled"
 
 class JobPriority(str, Enum):
     LOW = "low"
@@ -37,11 +38,19 @@ class Job(SQLModel, table=True):
             SqlEnum(JobPriority, name="jobpriority"),
             default=JobPriority.LOW
         ),
-        default=JobPriority.LOW
+        default=JobPriority.LOW 
     )
-    retries: int =Field(default=0)
+    attempts: int =Field(default=0) 
     max_retries: int = Field(default=3)
     worker_id: str | None = None
+    lease_expires_at: datetime | None = None
+    lease_token: str | None = None
+    available_at: datetime | None = None
+    
+    last_heartbeat_at: datetime | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    failed_at: datetime | None = None   
     scheduled_at: datetime | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     __table_args__ = (

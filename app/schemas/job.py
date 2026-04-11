@@ -12,7 +12,7 @@ class JobResponse(BaseModel):
     payload: Dict[str, Any]
     status: str
     priority: str
-    retries: int
+    attempts: int
     max_retries: int
     worker_id: str | None
     scheduled_at: datetime | None

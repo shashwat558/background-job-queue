@@ -1,2 +1,2 @@
-def exponential_backoff(retry_count:int):
-    return 2 ** retry_count
+def exponential_backoff(attempt_count:int):
+    return 2 ** attempt_count

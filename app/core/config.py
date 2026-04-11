@@ -23,3 +23,8 @@ conf = ConnectionConfig(
     MAIL_SSL_TLS = False,
     USE_CREDENTIALS = True 
 )
+
+
+## worker config
+LEASE_DURATION = 30
+HEARTBEAT_INTERVAL = 10

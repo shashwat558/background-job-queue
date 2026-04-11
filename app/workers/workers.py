@@ -7,13 +7,18 @@ from app.services.job_services import JobService
 import time
 import uuid
 import socket
-from datetime import datetime
+from datetime import datetime, timedelta
+from app.core.config import LEASE_DURATION
 
 def get_worker_id() -> str:
     """Generate a unique worker ID based on hostname and UUID"""
     hostname = socket.gethostname()
     unique_id = str(uuid.uuid4())[:8]
     return f"{hostname}_{unique_id}"
+
+def get_unique_lease_id() -> str:
+    "Generate a unique lease token"
+    return str(uuid.uuid4())[:8]
 
 def run_worker():
     worker_id = get_worker_id()
@@ -25,27 +30,44 @@ def run_worker():
         job_service = JobService(repo=repo, queue=queue)
         
         dispatcher = Dispatcher()
-        ready_job_id = queue.pop_ready_job(now=time.time())
+        ready_job_id = queue.get_ready_job_id(now=time.time())
         if not ready_job_id:
             print("no job currently")
             time.sleep(1)
             continue
         with Session(engine) as session:
-           job = repo.get_job(session, ready_job_id)
-           job.worker_id = worker_id
-           job.status = "running"
-           job.lease_expires_at = datetime.now()
-           job.last_heartbeat_at = datetime.now()
            
-           repo.update_job(session, job)
-           response = dispatcher.execute_job(job)
-           if response != True and job.retries < job.max_retries:
-               job_service.retry_job(session, job.id)
+           job = repo.try_claim_job(session, ready_job_id, worker_id, LEASE_DURATION)
+           
+           if not job:
+               print(f"Job {ready_job_id} is currently being processed by another worker.")
+               time.sleep(1)    
+               continue
+           
+           
+           
+           popped_job_id = queue.pop_job(ready_job_id)
+           if not popped_job_id:
+               print(f"Job {ready_job_id} was already claimed by another worker.")
+               time.sleep(1)    
+               continue
+           
+           try:
+               result = dispatcher.execute_job(job)
                
-           elif response == True:
-               repo.update_status(session, job.id, status="completed")
-           else:                  
-               repo.update_status(session, job.id, status="failed")
+               success = repo.complete_job(session, job.id, worker_id, job.lease_token)
+               if not success:
+                   print("Lost lease, skipping completion")
+           except Exception as e:
+               if job.attempts < job.max_retries:
+                   retry_result = job_service.retry_job(session, job.id)
+                   if retry_result:
+                       queue.enqueue(job.id, retry_result["available_at"].timestamp())
+                    
+                   else:
+                       repo.mark_job_as_failed(session, job_id=job.id, worker_id=worker_id, lease_token=job.lease_token)
+                     
+            
 
            
-run_worker()        
+run_worker()       

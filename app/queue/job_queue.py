@@ -28,3 +28,12 @@ class JobQueue:
         redis_client.zrem("job_queue", job_id)
         return job_id
     
+    def get_ready_job_id(self, now):
+        ready_jobs = redis_client.zrangebyscore("job_queue", 0, now, start=0, num=1)
+        return ready_jobs[0] if ready_jobs else None
+   
+   
+    def pop_job(self, job_id):
+        popped_job_id = redis_client.zrem("job_queue", job_id)
+        return popped_job_id    
+        
