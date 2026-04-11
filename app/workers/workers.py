@@ -9,6 +9,7 @@ import uuid
 import socket
 from datetime import datetime, timedelta
 from app.core.config import LEASE_DURATION
+import threading
 
 def get_worker_id() -> str:
     """Generate a unique worker ID based on hostname and UUID"""
@@ -20,10 +21,24 @@ def get_unique_lease_id() -> str:
     "Generate a unique lease token"
     return str(uuid.uuid4())[:8]
 
+
 def run_worker():
     worker_id = get_worker_id()
+    lease_token = get_unique_lease_id()
     print(f"Worker started with ID: {worker_id}")
+    stop_event = threading.Event()
     
+    def heartbeat_loop(job_id, lease_token , worker_id):
+        while not stop_event.is_set():
+            time.sleep(LEASE_DURATION / 3)
+            success = repo.renew_lease(session, job_id, worker_id, lease_token, LEASE_DURATION)
+            if not success:
+                
+                print("Lost lease, stopping job")
+                stop_event.set()
+                break
+
+    hb_thread = threading.Thread(target=heartbeat_loop, args=(job.id, job.lease_token, worker_id), daemon=True)
     while True:
         queue = JobQueue()
         repo = JobRepository()
@@ -37,7 +52,7 @@ def run_worker():
             continue
         with Session(engine) as session:
            
-           job = repo.try_claim_job(session, ready_job_id, worker_id, LEASE_DURATION)
+           job = repo.try_claim_job(session, ready_job_id, worker_id, LEASE_DURATION, lease_token)
            
            if not job:
                print(f"Job {ready_job_id} is currently being processed by another worker.")
@@ -51,9 +66,10 @@ def run_worker():
                print(f"Job {ready_job_id} was already claimed by another worker.")
                time.sleep(1)    
                continue
-           
+           hb_thread.start()
            try:
                result = dispatcher.execute_job(job)
+               print(result)
                
                success = repo.complete_job(session, job.id, worker_id, job.lease_token)
                if not success:
@@ -66,6 +82,9 @@ def run_worker():
                     
                    else:
                        repo.mark_job_as_failed(session, job_id=job.id, worker_id=worker_id, lease_token=job.lease_token)
+           finally:
+               stop_event.set()
+               hb_thread.join()
                      
             
 
