@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from app.db.session import get_session
 from app.models.services import NameOfServices, Service
 from app.models.user import User
+from app.api.deps import get_current_user
 
 
 router = APIRouter()
@@ -30,7 +31,8 @@ def _get_user_or_404(user_id: uuid.UUID, session: Session) -> User:
 
 
 @router.get("/me")
-def get_me(user_id: uuid.UUID, session: Session = Depends(get_session)):
+def get_me(current_user: str = Depends(get_current_user), session: Session = Depends(get_session)):
+	user_id = uuid.UUID(current_user)
 	user = _get_user_or_404(user_id, session)
 	return {
 		"id": str(user.id),
@@ -47,9 +49,10 @@ def get_me(user_id: uuid.UUID, session: Session = Depends(get_session)):
 @router.patch("/me")
 def update_me(
 	payload: UpdateMeRequest,
-	user_id: uuid.UUID,
+	current_user: str = Depends(get_current_user),
 	session: Session = Depends(get_session),
 ):
+	user_id = uuid.UUID(current_user)
 	user = _get_user_or_404(user_id, session)
 
 	if payload.avatar_url is not None:
@@ -69,7 +72,8 @@ def update_me(
 
 
 @router.delete("/me")
-def deactivate_me(user_id: uuid.UUID, session: Session = Depends(get_session)):
+def deactivate_me(current_user: str = Depends(get_current_user), session: Session = Depends(get_session)):
+	user_id = uuid.UUID(current_user)
 	user = _get_user_or_404(user_id, session)
 
 	user.is_active = False
@@ -81,7 +85,8 @@ def deactivate_me(user_id: uuid.UUID, session: Session = Depends(get_session)):
 
 
 @router.get("/me/services")
-def get_my_services(user_id: uuid.UUID, session: Session = Depends(get_session)):
+def get_my_services(current_user: str = Depends(get_current_user), session: Session = Depends(get_session)):
+	user_id = uuid.UUID(current_user)
 	_get_user_or_404(user_id, session)
 	statement = select(Service).where(Service.user_id == user_id)
 	services = session.exec(statement).all()
@@ -91,9 +96,10 @@ def get_my_services(user_id: uuid.UUID, session: Session = Depends(get_session))
 @router.post("/me/services")
 def add_my_service(
 	payload: AddServiceRequest,
-	user_id: uuid.UUID,
+	current_user: str = Depends(get_current_user),
 	session: Session = Depends(get_session),
 ):
+	user_id = uuid.UUID(current_user)
 	_get_user_or_404(user_id, session)
 
 	service = Service(
@@ -110,9 +116,10 @@ def add_my_service(
 @router.delete("/me/services/{service_id}")
 def delete_my_service(
 	service_id: uuid.UUID,
-	user_id: uuid.UUID,
+	current_user: str = Depends(get_current_user),
 	session: Session = Depends(get_session),
 ):
+	user_id = uuid.UUID(current_user)
 	_get_user_or_404(user_id, session)
 
 	statement = select(Service).where(

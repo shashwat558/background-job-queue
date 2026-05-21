@@ -1,2 +1,2 @@
-def generate_report():
-    return {"success":True}
+def generate_report(payload):
+    return {"status": "success"}

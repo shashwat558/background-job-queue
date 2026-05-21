@@ -16,8 +16,12 @@ class JobResponse(BaseModel):
     max_retries: int
     worker_id: str | None
     scheduled_at: datetime | None
+    available_at: datetime | None
+    started_at: datetime | None
+    completed_at: datetime | None
+    failed_at: datetime | None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 

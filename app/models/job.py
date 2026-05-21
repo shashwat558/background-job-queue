@@ -11,6 +11,7 @@ class JobStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
     RETRY_SCHEDULED = "retry_scheduled"
 
 class JobPriority(str, Enum):
@@ -54,5 +55,8 @@ class Job(SQLModel, table=True):
     scheduled_at: datetime | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     __table_args__ = (
-        Index("idx_job_status_scheduled", "status", "scheduled_at"),
+        # Used by worker queue-drain queries
+        Index("idx_job_status_available", "status", "available_at"),
+        # Used by the stale-lease reaper (status=running + lease_expires_at < now)
+        Index("idx_job_status_lease", "status", "lease_expires_at"),
     )
